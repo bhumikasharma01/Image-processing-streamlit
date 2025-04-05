@@ -3,28 +3,45 @@ import cv2
 import numpy as np
 import pywt
 from PIL import Image
-import matplotlib.pyplot as plt
+import io
 
 st.title("🧠 Image Processing App with Streamlit")
 
-# Upload image
 uploaded_file = st.file_uploader("Upload an image", type=["jpg", "jpeg", "png"])
 
 if uploaded_file is not None:
-    image = Image.open(uploaded_file)
-    img_np = np.array(image.convert('RGB'))
-    img_gray = cv2.cvtColor(img_np, cv2.COLOR_RGB2GRAY)
+    file_bytes = np.asarray(bytearray(uploaded_file.read()), dtype=np.uint8)
+    image = cv2.imdecode(file_bytes, 1)
+    image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
-    st.image(image, caption="Uploaded Image", use_column_width=True)
+    st.image(image_rgb, caption="Uploaded Image", use_container_width=True)
 
-    # Wavelet Transform
-    coeffs2 = pywt.dwt2(img_gray, 'haar')
-    cA, (cH, cV, cD) = coeffs2
+    # Sidebar for options
+    option = st.sidebar.selectbox(
+        "Choose Image Processing Operation",
+        ("None", "Grayscale", "Blur", "Edge Detection", "Wavelet Transform")
+    )
 
-    def normalize(img):
-        return ((np.abs(img) / np.max(np.abs(img))) * 255).astype(np.uint8)
+    if option == "Grayscale":
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        st.image(gray, caption="Grayscale Image", use_container_width=True, channels="GRAY")
 
-    st.subheader("Wavelet Components")
-    col1, col2 = st.columns(2)
-    col1.image(normalize(cA), caption="Approximation", clamp=True)
-    col2.image(normalize(cH), caption="Horizontal Detail", clamp=True)
+    elif option == "Blur":
+        blur = cv2.GaussianBlur(image, (15, 15), 0)
+        st.image(blur, caption="Blurred Image", use_container_width=True)
+
+    elif option == "Edge Detection":
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        edges = cv2.Canny(gray, 100, 200)
+        st.image(edges, caption="Edge Detection", use_container_width=True, channels="GRAY")
+
+    elif option == "Wavelet Transform":
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        coeffs = pywt.dwt2(gray, 'haar')
+        cA, (cH, cV, cD) = coeffs
+
+        st.subheader("Wavelet Components")
+        st.image(cA, caption="Approximation", use_container_width=True, channels="GRAY")
+        st.image(cH, caption="Horizontal Detail", use_container_width=True, channels="GRAY")
+        st.image(cV, caption="Vertical Detail", use_container_width=True, channels="GRAY")
+        st.image(cD, caption="Diagonal Detail", use_container_width=True, channels="GRAY")
